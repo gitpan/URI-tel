@@ -4,7 +4,7 @@ package URI::tel;
 use Moose;
 use Moose::Util::TypeConstraints;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 NAME
 
@@ -21,6 +21,14 @@ URI::tel - The tel URI for Telephone Numbers (RFC 3966)
 
     $uri_client->telephone_uri('tel:7042;phone-context=example.com');
     print $uri_client->context, "\n";
+
+    # or
+
+    use URI;
+    use URI::tel;
+
+    my $uri = URI->new('tel:+1-201-555-0123')
+
 
 =head1 DESCRIPTION
 
@@ -52,12 +60,44 @@ removed.  The URI syntax now conforms to RFC 2396 [RFC2396].
 
 =cut
 
+our $VISUAL_SEPARATORS = '-.()';
+
 our %syntax = ( 
     'telephone_subscriber'  => '^tel:',
     'isdn_subaddress'       => '.*;isub=',
     'extension'             => '.*;ext=',
     'context'               => '.*;phone-context='
 );
+
+=head1 ATTRIBUTES
+
+
+=head2 telephone_uri
+
+
+=head2 isdn_subaddress
+
+
+=head2 extension
+
+
+=head2 context
+
+
+=cut
+
+# The URI package automatically detects URI::* modules installed on a
+# system and will try to use them if the * matches the scheme. The URI
+# package will then called a method called _init on your package and fail.
+# Thanks for Douglas Christopher Wilson
+
+sub _init {
+    my ($class, $uri, $scheme) = @_;
+#    $uri = "$scheme:$uri" unless $uri =~ m{\A $scheme}x;
+    return $class->new(telephone_uri => join(':', 'tel', $uri));
+}
+
+sub _init_implementor() {}
 
 subtype 'Istel'
     => as 'Str'
@@ -72,6 +112,12 @@ has 'telephone_uri' => (
         $self->$_() for map {'_clear_' . $_ } keys %syntax;
     }
 );
+
+=head1 METHODS
+
+=head2 telephone_subscriber
+
+=cut
 
 for my $field (keys %syntax) {
     has $field => (
@@ -88,9 +134,30 @@ for my $field (keys %syntax) {
     ); 
 }
 
+=head2 tel_cmp
+
+Compare two numbers, according to RFC 3866:
+
+- Both must be either local or global numbers.
+
+- The 'global-number-digits' and the 'local-number-digits' must be equal, after removing all visual separators.
+
+=cut
+
+sub tel_cmp () {
+    my ($self, $number1, $number2) = @_;
+    $number1 =~ s/[$VISUAL_SEPARATORS]//g;
+    $number2 =~ s/[$VISUAL_SEPARATORS]//g;
+    lc($number1) eq lc($number2);
+}
+
 1;
 
 __END__
+
+=head1 CREDITS
+
+Douglas Christopher Wilson
 
 =head1 AUTHOR
 
